@@ -1,0 +1,31 @@
+{
+    "name": "@bahatron/logger",
+    "version": "1.0.0",
+    "description": "event based logger",
+    "author": "simonpiscitelli@gmail.com",
+    "main": "index.js",
+    "scripts": {
+        "dev": "tsc --watch",
+        "build": "tsc",
+        "test": "mocha 'dist/**/*.mocha.js'"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/bahatron/logger.git"
+    },
+    "license": "Apache-2.0",
+    "bugs": {
+        "url": "https://github.com/bahatron/logger/issues"
+    },
+    "homepage": "https://github.com/bahatron/logger#readme",
+    "dependencies": {
+        "@types/chai": "^4.2.8",
+        "@types/mocha": "^7.0.1",
+        "@types/node": "^13.7.0",
+        "axios": "^0.19.2",
+        "chai": "^4.2.0",
+        "mocha": "^7.0.1",
+        "moment": "^2.24.0",
+        "typescript": "^3.7.5"
+    }
+}
