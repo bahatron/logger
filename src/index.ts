@@ -33,9 +33,9 @@ export function log({
     message,
     level,
     context,
-    id = process.pid.toString().padEnd(5),
+    id = process.pid.toString().padStart(5),
 }: Log) {
-    console.log(`${timestamp} ${`${id}`} ${level} | ${message}`);
+    console.log(`${timestamp} [${id}] ${level} | ${message}`);
 }
 
 export function inspect(context: any = {}) {
