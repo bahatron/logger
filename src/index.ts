@@ -68,6 +68,12 @@ class Logger {
         this._handlers[event].push(handler);
     }
 
+    public inspect(context: any = {}) {
+        Object.entries(context || {}).forEach(([key, value]) => {
+            console.log(`${cyan(key)}: `, value);
+        });
+    }
+
     public debug(message: string, context?: any): void {
         if (this.DEBUG) {
             this.log({
@@ -76,7 +82,7 @@ class Logger {
                 level: cyan("DEBUG".padEnd(7)),
             });
 
-            inspect(context);
+            this.inspect(context);
 
             this.emit("debug");
         }
@@ -97,7 +103,7 @@ class Logger {
             level: orange("WARNING".padEnd(7)),
         });
 
-        inspect(context);
+        this.inspect(context);
 
         this.emit("warning");
     }
@@ -116,7 +122,7 @@ class Logger {
             return err.request.config;
         };
 
-        inspect(
+        this.inspect(
             (err as AxiosError).isAxiosError
                 ? {
                       req_config: requestConfig(),
