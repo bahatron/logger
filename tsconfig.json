@@ -9,8 +9,11 @@
         "sourceMap": true,
         "outDir": "dist",
         "strict": true,
-        "resolveJsonModule": true
+        "resolveJsonModule": true,
     },
+    "include": [
+        "src"
+    ],
     "exclude": [
         "node_modules",
         "dist"

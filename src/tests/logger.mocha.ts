@@ -1,5 +1,4 @@
-import { loggerFactory } from "../src";
-import { resolve } from "dns";
+import { loggerFactory } from "..";
 
 describe("logger", () => {
     const _logger = loggerFactory();

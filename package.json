@@ -3,10 +3,11 @@
     "version": "1.0.2",
     "description": "event based logger",
     "author": "simonpiscitelli@gmail.com",
-    "main": "index.js",
+    "main": "dist/index.js",
+    "types": "dist/index.d.ts",
     "scripts": {
         "dev": "tsc --watch",
-        "build": "tsc",
+        "build": "rm -rf dist && tsc",
         "test": "mocha 'dist/**/*.mocha.js'"
     },
     "repository": {
