@@ -1,14 +1,12 @@
 import moment from "moment";
 import { AxiosError } from "axios";
-import { EventEmitter } from "events";
-import { request } from "http";
 
 export const green = (text: string) => `\x1b[32m${text}\x1b[0m`;
 export const cyan = (text: string) => `\x1b[96m${text}\x1b[0m`;
 export const orange = (text: string) => `\x1b[33m${text}\x1b[0m`;
 export const red = (text: string) => `\x1b[31m${text}\x1b[0m`;
 
-interface Log {
+interface LogParams {
     timestamp?: string;
     message: string;
     level: string;
@@ -18,6 +16,7 @@ interface Log {
 
 interface Factory {
     debug?: boolean;
+    formatter?: (params: LogParams) => void;
 }
 
 interface Handler {
@@ -28,16 +27,6 @@ type LoggerType = Logger;
 
 export { LoggerType as Logger };
 
-export function log({
-    timestamp = moment().format("YYYY-MM-DD HH:mm:ss:SSS"),
-    message,
-    level,
-    context,
-    id = process.pid.toString().padStart(5),
-}: Log) {
-    console.log(`${timestamp} [${id}] ${level} | ${message}`);
-}
-
 export function inspect(context: any = {}) {
     Object.entries(context || {}).forEach(([key, value]) => {
         console.log(`${cyan(key)}: `, value);
@@ -47,7 +36,19 @@ export function inspect(context: any = {}) {
 class Logger {
     private _handlers: Record<string, Handler[]> = {};
 
-    constructor(public readonly DEBUG: boolean) {
+    public static _log = ({
+        timestamp = moment().format("YYYY-MM-DD HH:mm:ss:SSS"),
+        message,
+        level,
+        id = `[${process.pid.toString()}]`.padStart(7),
+    }: LogParams) => {
+        console.log(`${timestamp} ${id} ${level} | ${message}`);
+    };
+
+    public log: (params: LogParams) => void;
+
+    constructor(public readonly DEBUG: boolean, loggerHandler = Logger._log) {
+        this.log = loggerHandler;
         this._handlers;
     }
 
@@ -67,20 +68,9 @@ class Logger {
         this._handlers[event].push(handler);
     }
 
-    public once(event: string, handler: Handler) {
-        const cb = () =>
-            this._handlers[event].splice(
-                this._handlers[event].indexOf(handler),
-                1
-            );
-
-        this.on(event, handler);
-        this.on(event, cb);
-    }
-
     public debug(message: string, context?: any): void {
         if (this.DEBUG) {
-            log({
+            this.log({
                 message,
                 context,
                 level: cyan("DEBUG".padEnd(7)),
@@ -93,7 +83,7 @@ class Logger {
     }
 
     public info(message: string) {
-        log({
+        this.log({
             message,
             level: green("INFO".padEnd(7)),
         });
@@ -102,9 +92,8 @@ class Logger {
     }
 
     public warning(message: string, context?: any) {
-        log({
+        this.log({
             message,
-            context,
             level: orange("WARNING".padEnd(7)),
         });
 
@@ -114,9 +103,8 @@ class Logger {
     }
 
     public error(error: Error) {
-        log({
+        this.log({
             message: error.message,
-            context,
             level: red("ERROR".padEnd(7)),
         });
 
@@ -143,6 +131,6 @@ class Logger {
 }
 
 export default loggerFactory();
-export function loggerFactory({ debug = true }: Factory = {}) {
-    return new Logger(debug);
+export function loggerFactory({ debug = true, formatter }: Factory = {}) {
+    return new Logger(debug, formatter);
 }

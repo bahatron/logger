@@ -38,4 +38,16 @@ describe("logger", () => {
             _logger.error(new Error("error"));
         });
     });
+
+    it("can alter log message", () => {
+        const logger = loggerFactory({
+            debug: true,
+            formatter: params => {
+                console.log(params);
+                console.log(`Look mom, I'm on TV!`);
+            },
+        });
+
+        logger.info("what's going on?");
+    });
 });
