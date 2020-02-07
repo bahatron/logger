@@ -23,17 +23,13 @@ interface Handler {
     (...args: any[]): void;
 }
 
-type LoggerType = Logger;
-
-export { LoggerType as Logger };
-
 export function inspect(context: any = {}) {
     Object.entries(context || {}).forEach(([key, value]) => {
         console.log(`${cyan(key)}: `, value);
     });
 }
 
-class Logger {
+export class Logger {
     private _handlers: Record<string, Handler[]> = {};
 
     public static _log = ({
