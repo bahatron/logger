@@ -7,16 +7,11 @@ export const orange = (text: string) => `\x1b[33m${text}\x1b[0m`;
 export const red = (text: string) => `\x1b[31m${text}\x1b[0m`;
 
 interface LogParams {
+    id: string;
     timestamp?: string;
     message: string;
     level: string;
     context?: any;
-    id?: string;
-}
-
-interface Factory {
-    debug?: boolean;
-    formatter?: (params: LogParams) => void;
 }
 
 interface Handler {
@@ -29,30 +24,31 @@ export function inspect(context: any = {}) {
     });
 }
 
+function _formatter({
+    timestamp = moment().format("YYYY-MM-DD HH:mm:ss:SSS"),
+    message,
+    level,
+    id,
+}: LogParams) {
+    return `${timestamp} ${id} ${level} | ${message}`;
+}
+
 export class Logger {
     private _handlers: Record<string, Handler[]> = {};
 
-    public static _log = ({
-        timestamp = moment().format("YYYY-MM-DD HH:mm:ss:SSS"),
-        message,
-        level,
-        id = `[${process.pid.toString()}]`.padStart(7),
-    }: LogParams) => {
-        console.log(`${timestamp} ${id} ${level} | ${message}`);
-    };
-
-    public log: (params: LogParams) => void;
-
-    constructor(public readonly DEBUG: boolean, loggerHandler = Logger._log) {
-        this.log = loggerHandler;
+    constructor(
+        public readonly _debug: boolean,
+        public readonly _id: string,
+        private _formatter: (params: LogParams) => string
+    ) {
         this._handlers;
     }
 
-    public emit(event: string, ...args: any[]) {
-        (this._handlers[event] || []).forEach(handler => handler(...args));
+    public emit(event: string) {
+        (this._handlers[event] || []).forEach(handler => handler());
     }
 
-    public on(event: string, handler: Handler) {
+    public on(event: string, handler: () => void) {
         if (!this._handlers[event]) {
             this._handlers[event] = [];
         }
@@ -64,6 +60,10 @@ export class Logger {
         this._handlers[event].push(handler);
     }
 
+    public log(params: LogParams) {
+        console.log(this._formatter(params));
+    }
+
     public inspect(context: any = {}) {
         Object.entries(context || {}).forEach(([key, value]) => {
             console.log(`${cyan(key)}: `, value);
@@ -71,10 +71,11 @@ export class Logger {
     }
 
     public debug(message: string, context?: any): void {
-        if (this.DEBUG) {
+        if (this._debug) {
             this.log({
                 message,
                 context,
+                id: this._id,
                 level: cyan("DEBUG".padEnd(7)),
             });
 
@@ -87,6 +88,7 @@ export class Logger {
     public info(message: string) {
         this.log({
             message,
+            id: this._id,
             level: green("INFO".padEnd(7)),
         });
 
@@ -96,6 +98,8 @@ export class Logger {
     public warning(message: string, context?: any) {
         this.log({
             message,
+            context,
+            id: this._id,
             level: orange("WARNING".padEnd(7)),
         });
 
@@ -107,6 +111,7 @@ export class Logger {
     public error(error: Error) {
         this.log({
             message: error.message,
+            id: this._id,
             level: red("ERROR".padEnd(7)),
         });
 
@@ -125,7 +130,10 @@ export class Logger {
                       res_status: responseStatus(),
                       res_data: responseStatus(),
                   }
-                : err
+                : {
+                      ...err,
+                      stack: err.stack,
+                  }
         );
 
         this.emit("error");
@@ -133,6 +141,16 @@ export class Logger {
 }
 
 export default loggerFactory();
-export function loggerFactory({ debug = true, formatter }: Factory = {}) {
-    return new Logger(debug, formatter);
+
+interface Factory {
+    debug?: boolean;
+    id?: string;
+    formatter?: (params: LogParams) => string;
+}
+export function loggerFactory({
+    debug = true,
+    id = `[${process.pid.toString()}]`.padStart(7),
+    formatter = _formatter,
+}: Factory = {}) {
+    return new Logger(debug, id, formatter);
 }

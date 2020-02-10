@@ -1,4 +1,5 @@
 import { loggerFactory } from "..";
+import { expect } from "chai";
 
 describe("logger", () => {
     const _logger = loggerFactory();
@@ -43,11 +44,23 @@ describe("logger", () => {
         const logger = loggerFactory({
             debug: true,
             formatter: params => {
-                console.log(params);
-                console.log(`Look mom, I'm on TV!`);
+                return `Look mom, I'm on TV!`;
             },
         });
 
         logger.info("what's going on?");
+    });
+
+    it("can alter logger id", () => {
+        const logger = loggerFactory({
+            debug: false,
+            id: "my_awesome_id",
+            formatter: params => {
+                expect(params.id).to.eq("my_awesome_id");
+                return params.id as string;
+            },
+        });
+
+        logger.info("testing id change");
     });
 });
