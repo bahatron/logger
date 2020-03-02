@@ -104,7 +104,7 @@ export class Logger {
         this.inspect(
             (err as AxiosError).isAxiosError
                 ? {
-                      req_config: err.request.config,
+                      req_config: err.config,
                       res_status: err.response?.status,
                       res_data: err.response?.data,
                   }
