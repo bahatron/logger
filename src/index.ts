@@ -6,31 +6,20 @@ export const cyan = (text: string) => `\x1b[96m${text}\x1b[0m`;
 export const orange = (text: string) => `\x1b[33m${text}\x1b[0m`;
 export const red = (text: string) => `\x1b[31m${text}\x1b[0m`;
 
-interface LogParams {
-    id: string;
-    timestamp?: string;
+interface LogContext {
+    timestamp: string;
     message: string;
     level: string;
     context?: any;
+    id: string;
 }
 
 interface Handler {
-    (...args: any[]): void;
+    (payload: LogContext): void;
 }
 
-export function inspect(context: any = {}) {
-    Object.entries(context || {}).forEach(([key, value]) => {
-        console.log(`${cyan(key)}: `, value);
-    });
-}
-
-function _formatter({
-    timestamp = moment().format("YYYY-MM-DD HH:mm:ss:SSS"),
-    message,
-    level,
-    id,
-}: LogParams) {
-    return `${timestamp} ${id} ${level} | ${message}`;
+function _log({ timestamp, message, level, id }: LogContext) {
+    console.log(`${timestamp} ${id} ${level} | ${message}`);
 }
 
 export class Logger {
@@ -39,16 +28,14 @@ export class Logger {
     constructor(
         public readonly _debug: boolean,
         public readonly _id: string,
-        private _formatter: (params: LogParams) => string
-    ) {
-        this._handlers;
+        public readonly _log?: (payload: LogContext) => void
+    ) {}
+
+    private emit(event: string, payload: LogContext) {
+        (this._handlers[event] || []).forEach(handler => handler(payload));
     }
 
-    public emit(event: string) {
-        (this._handlers[event] || []).forEach(handler => handler());
-    }
-
-    public on(event: string, handler: () => void) {
+    public on(event: string, handler: Handler) {
         if (!this._handlers[event]) {
             this._handlers[event] = [];
         }
@@ -60,97 +47,83 @@ export class Logger {
         this._handlers[event].push(handler);
     }
 
-    public log(params: LogParams) {
-        console.log(this._formatter(params));
+    private log(level: string, message: string, context: any = {}) {
+        let payload = {
+            id: this._id,
+            timestamp: moment().format("YYYY-MM-DD HH:mm:ss.SSS"),
+            context,
+            message,
+            level,
+        };
+
+        this._log ? this._log(payload) : _log(payload);
+
+        return payload;
     }
 
     public inspect(context: any = {}) {
-        Object.entries(context || {}).forEach(([key, value]) => {
-            console.log(`${cyan(key)}: `, value);
-        });
+        if (typeof context === "object" || Array.isArray(context)) {
+            Object.entries(context || {}).forEach(([key, value]) => {
+                console.log(`${cyan(key)}: `, value);
+            });
+        } else {
+            console.log(`${cyan(typeof context)}: ${context}`);
+        }
     }
 
     public debug(message: string, context?: any): void {
         if (this._debug) {
-            this.log({
-                message,
-                context,
-                id: this._id,
-                level: cyan("DEBUG".padEnd(7)),
-            });
+            this.emit(
+                "debug",
+                this.log(cyan("DEBUG".padEnd(7)), message, context)
+            );
 
             this.inspect(context);
-
-            this.emit("debug");
         }
     }
 
     public info(message: string) {
-        this.log({
-            message,
-            id: this._id,
-            level: green("INFO".padEnd(7)),
-        });
-
-        this.emit("info");
+        this.emit("info", this.log(green("INFO".padEnd(7)), message));
     }
 
     public warning(message: string, context?: any) {
-        this.log({
-            message,
-            context,
-            id: this._id,
-            level: orange("WARNING".padEnd(7)),
-        });
+        this.emit(
+            "warning",
+            this.log(orange("WARNING".padEnd(7)), message, context)
+        );
 
         this.inspect(context);
-
-        this.emit("warning");
     }
 
     public error(error: Error) {
-        this.log({
-            message: error.message,
-            id: this._id,
-            level: red("ERROR".padEnd(7)),
-        });
+        this.emit("error", this.log(red("ERROR".padEnd(7)), error.message));
 
         let err: any = error;
-        let responseStatus = () => {
-            return err.response ? err.response.status : null;
-        };
-        let requestConfig = () => {
-            return err.request.config;
-        };
-
         this.inspect(
             (err as AxiosError).isAxiosError
                 ? {
-                      req_config: requestConfig(),
-                      res_status: responseStatus(),
-                      res_data: responseStatus(),
+                      req_config: err.request.config,
+                      res_status: err.response?.status,
+                      res_data: err.response?.data,
                   }
                 : {
                       ...err,
                       stack: err.stack,
                   }
         );
-
-        this.emit("error");
     }
 }
 
 export default loggerFactory();
 
-interface Factory {
-    debug?: boolean;
-    id?: string;
-    formatter?: (params: LogParams) => string;
-}
 export function loggerFactory({
     debug = true,
     id = `[${process.pid.toString()}]`.padStart(7),
-    formatter = _formatter,
-}: Factory = {}) {
+    formatter,
+}: {
+    debug?: boolean;
+    id?: string;
+    formatter?: (payload: LogContext) => void;
+} = {}) {
     return new Logger(debug, id, formatter);
 }
