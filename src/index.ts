@@ -68,7 +68,7 @@ export class Logger {
                 console.log(`${cyan(key)}: `, value);
             });
         } else {
-            console.log(`${cyan(typeof context)}: ${context}`);
+            console.log(`${red(typeof context)}: ${context}`);
         }
     }
 
