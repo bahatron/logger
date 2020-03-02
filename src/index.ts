@@ -18,8 +18,9 @@ interface Handler {
     (payload: LogContext): void;
 }
 
-function _log({ timestamp, message, level, id }: LogContext) {
-    console.log(`${timestamp} ${id} ${level} | ${message}`);
+function defaultFormatter({ timestamp, message, level, id }: LogContext) {
+    let _timestamp = moment(timestamp).format("YYYY-MM-DD HH:mm:ss.SSS");
+    return `${_timestamp} ${id} ${level} | ${message}`;
 }
 
 export class Logger {
@@ -28,7 +29,7 @@ export class Logger {
     constructor(
         public readonly _debug: boolean,
         public readonly _id: string,
-        public readonly _log?: (payload: LogContext) => void
+        public readonly _formatter: (payload: LogContext) => void
     ) {}
 
     private emit(event: string, payload: LogContext) {
@@ -50,13 +51,13 @@ export class Logger {
     private log(level: string, message: string, context: any = {}) {
         let payload = {
             id: this._id,
-            timestamp: moment().format("YYYY-MM-DD HH:mm:ss.SSS"),
+            timestamp: moment().toISOString(),
             context,
             message,
             level,
         };
 
-        this._log ? this._log(payload) : _log(payload);
+        console.log(this._formatter(payload));
 
         return payload;
     }
@@ -82,8 +83,9 @@ export class Logger {
         }
     }
 
-    public info(message: string) {
+    public info(message: string, context?: any) {
         this.emit("info", this.log(green("INFO".padEnd(7)), message));
+        this.inspect(context);
     }
 
     public warning(message: string, context?: any) {
@@ -119,11 +121,11 @@ export default loggerFactory();
 export function loggerFactory({
     debug = true,
     id = `[${process.pid.toString()}]`.padStart(7),
-    formatter,
+    formatter = defaultFormatter,
 }: {
     debug?: boolean;
     id?: string;
-    formatter?: (payload: LogContext) => void;
+    formatter?: (payload: LogContext) => string;
 } = {}) {
     return new Logger(debug, id, formatter);
 }

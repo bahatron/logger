@@ -40,7 +40,7 @@ describe("logger", () => {
         });
     });
 
-    it("can alter log message", () => {
+    it("can set log message", () => {
         const logger = loggerFactory({
             debug: true,
             formatter: params => {
@@ -51,13 +51,13 @@ describe("logger", () => {
         logger.info("what's going on?");
     });
 
-    it("can alter logger id", () => {
+    it("can set logger id", () => {
         const logger = loggerFactory({
             debug: false,
             id: "my_awesome_id",
             formatter: params => {
                 expect(params.id).to.eq("my_awesome_id");
-                return params.id as string;
+                return `${params.level} id: ${params.id} - message: ${params.message}`;
             },
         });
 
