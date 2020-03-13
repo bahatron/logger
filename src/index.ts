@@ -6,7 +6,7 @@ export const cyan = (text: string) => `\x1b[96m${text}\x1b[0m`;
 export const orange = (text: string) => `\x1b[33m${text}\x1b[0m`;
 export const red = (text: string) => `\x1b[31m${text}\x1b[0m`;
 
-interface LogContext {
+export interface LogContext {
     timestamp: string;
     message: string;
     level: string;
@@ -23,32 +23,41 @@ function defaultFormatter({ timestamp, message, level, id }: LogContext) {
     return `${_timestamp} ${id} ${level} | ${message}`;
 }
 
-export class Logger {
-    private _handlers: Record<string, Handler[]> = {};
+const _handlers: Record<string, Handler[]> = {};
 
+export type Logger = LoggerClass;
+class LoggerClass {
     constructor(
         public readonly _debug: boolean,
         public readonly _id: string,
-        public readonly _formatter: (payload: LogContext) => void
+        public readonly _formatter: (payload: LogContext) => string
     ) {}
 
     private emit(event: string, payload: LogContext) {
-        (this._handlers[event] || []).forEach(handler => handler(payload));
+        (_handlers[event] || []).forEach(handler => handler(payload));
     }
 
     public on(event: string, handler: Handler) {
-        if (!this._handlers[event]) {
-            this._handlers[event] = [];
+        if (!_handlers[event]) {
+            _handlers[event] = [];
         }
 
-        if (this._handlers[event].includes(handler)) {
+        if (_handlers[event].includes(handler)) {
             return;
         }
 
-        this._handlers[event].push(handler);
+        _handlers[event].push(handler);
     }
 
-    private log(level: string, message: string, context: any = {}) {
+    public id(id: string): Logger {
+        return Logger({ debug: this._debug, id, formatter: this._formatter });
+    }
+
+    public formatter(formatter: LoggerClass["_formatter"]): Logger {
+        return Logger({ debug: this._debug, id: this._id, formatter });
+    }
+
+    private log(level: string, message: string, context?: any) {
         let payload = {
             id: this._id,
             timestamp: moment().toISOString(),
@@ -62,7 +71,11 @@ export class Logger {
         return payload;
     }
 
-    public inspect(context: any = {}) {
+    public inspect(context?: any) {
+        if (context === undefined) {
+            return;
+        }
+
         console.log(`${red(typeof context)}`);
 
         if (typeof context === "object" || Array.isArray(context)) {
@@ -107,10 +120,10 @@ export class Logger {
             (err as AxiosError).isAxiosError
                 ? {
                       req_config: {
-                          url: err.config.url,
-                          method: err.config.method,
-                          headers: err.config.headers,
-                          data: err.config.data,
+                          url: err.config?.url,
+                          method: err.config?.method,
+                          headers: err.config?.headers,
+                          data: err.config?.data,
                       },
                       res_status: err.response?.status,
                       res_data: err.response?.data,
@@ -123,9 +136,11 @@ export class Logger {
     }
 }
 
-export default loggerFactory();
+// backwards compatability
+export { Logger as loggerFactory };
 
-export function loggerFactory({
+export default Logger();
+export function Logger({
     debug = true,
     id = `[${process.pid.toString()}]`.padStart(7),
     formatter = defaultFormatter,
@@ -134,5 +149,5 @@ export function loggerFactory({
     id?: string;
     formatter?: (payload: LogContext) => string;
 } = {}) {
-    return new Logger(debug, id, formatter);
+    return new LoggerClass(debug, id, formatter);
 }
