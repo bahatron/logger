@@ -91,6 +91,9 @@ describe("immutable loggers", () => {
                                         level =>
                                             new Promise(async resolve => {
                                                 logger.on(level, event => {
+                                                    console.log(
+                                                        `-${logger._id}-${level}-`
+                                                    );
                                                     resolve(event);
                                                 });
                                             })
