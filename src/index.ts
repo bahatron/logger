@@ -63,12 +63,14 @@ export class Logger {
     }
 
     public inspect(context: any = {}) {
+        console.log(`${red(typeof context)}`);
+
         if (typeof context === "object" || Array.isArray(context)) {
             Object.entries(context || {}).forEach(([key, value]) => {
                 console.log(`${cyan(key)}: `, value);
             });
         } else {
-            console.log(`${red(typeof context)}: ${context}`);
+            console.log((context ?? {}).toString());
         }
     }
 
@@ -104,7 +106,12 @@ export class Logger {
         this.inspect(
             (err as AxiosError).isAxiosError
                 ? {
-                      req_config: err.config,
+                      req_config: {
+                          url: err.config.url,
+                          method: err.config.method,
+                          headers: err.config.headers,
+                          data: err.config.data,
+                      },
                       res_status: err.response?.status,
                       res_data: err.response?.data,
                   }
