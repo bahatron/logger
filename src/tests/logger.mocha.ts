@@ -109,5 +109,4 @@ describe("immutable loggers", () => {
             loggerC.error(<any>{ isAxiosError: true });
         });
     });
-    _logger.on("debug", event => {});
 });

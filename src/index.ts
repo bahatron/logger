@@ -25,8 +25,7 @@ function defaultFormatter({ timestamp, message, level, id }: LogContext) {
 
 const _handlers: Record<string, Handler[]> = {};
 
-export type Logger = LoggerClass;
-class LoggerClass {
+export class Logger {
     constructor(
         public readonly _debug: boolean,
         public readonly _id: string,
@@ -50,11 +49,15 @@ class LoggerClass {
     }
 
     public id(id: string): Logger {
-        return Logger({ debug: this._debug, id, formatter: this._formatter });
+        return createLogger({
+            debug: this._debug,
+            id,
+            formatter: this._formatter,
+        });
     }
 
-    public formatter(formatter: LoggerClass["_formatter"]): Logger {
-        return Logger({ debug: this._debug, id: this._id, formatter });
+    public formatter(formatter: Logger["_formatter"]): Logger {
+        return createLogger({ debug: this._debug, id: this._id, formatter });
     }
 
     private log(level: string, message: string, context?: any) {
@@ -136,11 +139,11 @@ class LoggerClass {
     }
 }
 
-// backwards compatability
-export { Logger as loggerFactory };
+export default createLogger();
 
-export default Logger();
-export function Logger({
+// backwards compatability
+export { createLogger as loggerFactory };
+export function createLogger({
     debug = true,
     id = `[${process.pid.toString()}]`.padStart(7),
     formatter = defaultFormatter,
@@ -149,5 +152,5 @@ export function Logger({
     id?: string;
     formatter?: (payload: LogContext) => string;
 } = {}) {
-    return new LoggerClass(debug, id, formatter);
+    return new Logger(debug, id, formatter);
 }
