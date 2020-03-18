@@ -1,6 +1,6 @@
 {
     "name": "@bahatron/logger",
-    "version": "1.2.1",
+    "version": "1.2.2",
     "description": "event based logger",
     "author": "simonpiscitelli@gmail.com",
     "main": "dist/index.js",
