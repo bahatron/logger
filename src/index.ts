@@ -145,7 +145,7 @@ export default createLogger();
 export { createLogger as loggerFactory };
 export function createLogger({
     debug = true,
-    id = `[${process.pid.toString()}]`.padStart(7),
+    id = "",
     formatter = defaultFormatter,
 }: {
     debug?: boolean;
