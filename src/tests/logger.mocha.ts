@@ -1,8 +1,8 @@
-import { loggerFactory } from "..";
+import { createLogger } from "..";
 import { expect } from "chai";
 
 describe("logger", () => {
-    const _logger = loggerFactory();
+    const _logger = createLogger();
 
     it("emits and prints debug", async () => {
         return new Promise(resolve => {
@@ -41,7 +41,7 @@ describe("logger", () => {
     });
 
     it("can set formatter", () => {
-        const logger = loggerFactory({
+        const logger = createLogger({
             debug: true,
             formatter: params => {
                 return JSON.stringify(params, null, 4);
@@ -56,7 +56,7 @@ describe("logger", () => {
     });
 
     it("can set logger id", () => {
-        const logger = loggerFactory({
+        const logger = createLogger({
             debug: false,
             id: "my_awesome_id",
             formatter: params => {
@@ -73,7 +73,7 @@ describe("logger", () => {
 });
 
 describe("immutable loggers", () => {
-    const _logger = loggerFactory({ debug: false, id: "immb21" });
+    const _logger = createLogger({ debug: false, id: "immb21" });
 
     it("calls all event handlers attached from any event", async () => {
         return new Promise(async resolve => {
@@ -92,7 +92,7 @@ describe("immutable loggers", () => {
                                             new Promise(async resolve => {
                                                 logger.on(level, event => {
                                                     console.log(
-                                                        `-${logger._id}-${level}-`
+                                                        `-${event.id}-${level}-`
                                                     );
                                                     resolve(event);
                                                 });

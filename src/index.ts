@@ -1,11 +1,6 @@
 import moment from "moment";
 import { AxiosError } from "axios";
 
-export const green = (text: string) => `\x1b[32m${text}\x1b[0m`;
-export const cyan = (text: string) => `\x1b[96m${text}\x1b[0m`;
-export const orange = (text: string) => `\x1b[33m${text}\x1b[0m`;
-export const red = (text: string) => `\x1b[31m${text}\x1b[0m`;
-
 export interface LogContext {
     timestamp: string;
     message: string;
@@ -14,113 +9,147 @@ export interface LogContext {
     id: string;
 }
 
-interface Handler {
+export interface Handler {
     (payload: LogContext): void;
 }
+
+export interface Formatter {
+    (payload: LogContext): string;
+}
+
+export const green = (text: string) => `\x1b[32m${text}\x1b[0m`;
+export const cyan = (text: string) => `\x1b[96m${text}\x1b[0m`;
+export const orange = (text: string) => `\x1b[33m${text}\x1b[0m`;
+export const red = (text: string) => `\x1b[31m${text}\x1b[0m`;
+
+const isAxiosError = (err: any): err is AxiosError => Boolean(err.isAxiosError);
 
 function defaultFormatter({ timestamp, message, level, id }: LogContext) {
     let _timestamp = moment(timestamp).format("YYYY-MM-DD HH:mm:ss.SSS");
     return `${_timestamp} ${id} ${level} | ${message}`;
 }
 
+function emit(event: string, payload: LogContext) {
+    (_handlers[event] || []).forEach(handler => handler(payload));
+}
+
 const _handlers: Record<string, Handler[]> = {};
 
-export class Logger {
-    constructor(
-        public readonly _debug: boolean,
-        public readonly _id: string,
-        public readonly _formatter: (payload: LogContext) => string
-    ) {}
-
-    private emit(event: string, payload: LogContext) {
-        (_handlers[event] || []).forEach(handler => handler(payload));
-    }
-
-    public on(event: string, handler: Handler) {
-        if (!_handlers[event]) {
-            _handlers[event] = [];
-        }
-
-        if (_handlers[event].includes(handler)) {
-            return;
-        }
-
-        _handlers[event].push(handler);
-    }
-
-    public id(id: string): Logger {
-        return createLogger({
-            debug: this._debug,
-            id,
-            formatter: this._formatter,
-        });
-    }
-
-    public formatter(formatter: Logger["_formatter"]): Logger {
-        return createLogger({ debug: this._debug, id: this._id, formatter });
-    }
-
-    private log(level: string, message: string, context?: any) {
+export type Logger = ReturnType<typeof createLogger>;
+export function createLogger({
+    debug = true,
+    id = "",
+    formatter = defaultFormatter,
+    colours = true,
+}: {
+    debug?: boolean;
+    id?: string;
+    formatter?: Formatter;
+    colours?: boolean;
+} = {}) {
+    function log(level: string, message: string, context?: any) {
         let payload = {
-            id: this._id,
+            id,
             timestamp: moment().toISOString(),
             context,
             message,
             level,
         };
 
-        console.log(this._formatter(payload));
+        console.log(formatter(payload));
 
         return payload;
     }
 
-    public inspect(context?: any) {
-        if (context === undefined) {
+    function inspect(context?: any) {
+        if (!context) {
             return;
         }
 
-        console.log(`${red(typeof context)}`);
+        let type = `type: ${typeof context}`;
+        console.log(colours ? red(type) : type);
 
         if (typeof context === "object" || Array.isArray(context)) {
-            Object.entries(context || {}).forEach(([key, value]) => {
-                console.log(`${cyan(key)}: `, value);
+            Object.entries(context).forEach(([key, value]) => {
+                console.log(`${colours ? cyan(key) : key}: `, value);
             });
         } else {
-            console.log((context ?? {}).toString());
+            console.log(context.toString());
         }
     }
 
-    public debug(message: string, context?: any): void {
-        if (this._debug) {
-            this.emit(
-                "debug",
-                this.log(cyan("DEBUG".padEnd(7)), message, context)
+    return {
+        id(_id: string) {
+            return createLogger({
+                debug,
+                id: _id,
+                formatter,
+            });
+        },
+
+        formatter(_formatter: Formatter) {
+            return createLogger({
+                debug,
+                id,
+                formatter: _formatter,
+            });
+        },
+
+        on(event: string, handler: Handler) {
+            if (!_handlers[event]) {
+                _handlers[event] = [];
+            }
+
+            if (_handlers[event].includes(handler)) {
+                return;
+            }
+
+            _handlers[event].push(handler);
+        },
+
+        inspect,
+
+        debug(message: string, context?: any): void {
+            if (debug) {
+                let level = "DEBUG".padEnd(7);
+
+                let logContext = log(
+                    colours ? cyan(level) : level,
+                    message,
+                    context
+                );
+
+                emit("debug", logContext);
+
+                inspect(context);
+            }
+        },
+
+        info(message: string, context?: any) {
+            let level = "INFO".padEnd(7);
+            let logContext = log(
+                colours ? green(level) : level,
+                message,
+                context
             );
 
-            this.inspect(context);
-        }
-    }
+            emit("info", logContext);
+        },
 
-    public info(message: string, context?: any) {
-        this.emit("info", this.log(green("INFO".padEnd(7)), message));
-        this.inspect(context);
-    }
+        warning(message: string, context?: any) {
+            let level = "WARNING".padEnd(7);
+            let logContext = log(
+                colours ? orange(level) : level,
+                message,
+                context
+            );
 
-    public warning(message: string, context?: any) {
-        this.emit(
-            "warning",
-            this.log(orange("WARNING".padEnd(7)), message, context)
-        );
+            emit("warning", logContext);
+        },
 
-        this.inspect(context);
-    }
-
-    public error(error: Error) {
-        this.emit("error", this.log(red("ERROR".padEnd(7)), error.message));
-
-        let err: any = error;
-        this.inspect(
-            (err as AxiosError).isAxiosError
+        error(err: Error | AxiosError) {
+            let level = "ERROR".padEnd(7);
+            let context = isAxiosError(err)
                 ? {
                       req_config: {
                           url: err.config?.url,
@@ -130,27 +159,22 @@ export class Logger {
                       },
                       res_status: err.response?.status,
                       res_data: err.response?.data,
+                      stack: err.stack,
                   }
                 : {
                       ...err,
                       stack: err.stack,
-                  }
-        );
-    }
+                  };
+
+            let logContext = log(
+                colours ? red(level) : level,
+                err.message,
+                context
+            );
+
+            emit("error", logContext);
+        },
+    };
 }
 
 export default createLogger();
-
-// backwards compatability
-export { createLogger as loggerFactory };
-export function createLogger({
-    debug = true,
-    id = "",
-    formatter = defaultFormatter,
-}: {
-    debug?: boolean;
-    id?: string;
-    formatter?: (payload: LogContext) => string;
-} = {}) {
-    return new Logger(debug, id, formatter);
-}
