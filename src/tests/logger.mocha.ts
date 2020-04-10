@@ -5,7 +5,7 @@ describe("logger", () => {
     const _logger = createLogger();
 
     it("emits and prints debug", async () => {
-        return new Promise(resolve => {
+        return new Promise((resolve) => {
             _logger.on("debug", () => {
                 resolve();
             });
@@ -14,7 +14,7 @@ describe("logger", () => {
     });
 
     it("emits and prints info", async () => {
-        return new Promise(resolve => {
+        return new Promise((resolve) => {
             _logger.on("info", () => {
                 resolve();
             });
@@ -23,7 +23,7 @@ describe("logger", () => {
     });
 
     it("emits and prints warning", async () => {
-        return new Promise(resolve => {
+        return new Promise((resolve) => {
             _logger.on("warning", () => {
                 resolve();
             });
@@ -32,7 +32,7 @@ describe("logger", () => {
     });
 
     it("emits and prints error", async () => {
-        return new Promise(resolve => {
+        return new Promise((resolve) => {
             _logger.on("error", () => {
                 resolve();
             });
@@ -43,7 +43,7 @@ describe("logger", () => {
     it("can set formatter", () => {
         const logger = createLogger({
             debug: true,
-            formatter: params => {
+            formatter: (params) => {
                 return JSON.stringify(params, null, 4);
             },
         });
@@ -51,7 +51,7 @@ describe("logger", () => {
         logger.info("what's going on?");
 
         logger
-            .formatter(params => "all of your bases are belong to me")
+            .formatter((params) => "all of your bases are belong to me")
             .info("changing the formatter!");
     });
 
@@ -59,7 +59,7 @@ describe("logger", () => {
         const logger = createLogger({
             debug: false,
             id: "my_awesome_id",
-            formatter: params => {
+            formatter: (params) => {
                 return `${params.level} id: ${params.id} - message: ${params.message}`;
             },
         });
@@ -76,25 +76,24 @@ describe("immutable loggers", () => {
     const _logger = createLogger({ debug: false, id: "immb21" });
 
     it("calls all event handlers attached from any event", async () => {
-        return new Promise(async resolve => {
+        return new Promise(async (resolve) => {
             const loggerA = _logger.id("loggerA");
             const loggerB = _logger.id("loggerB");
             const loggerC = _logger.id("loggerC");
 
             Promise.all(
                 [loggerA, loggerB, loggerC, _logger].map(
-                    logger =>
-                        new Promise(async resolve => {
+                    (logger) =>
+                        new Promise(async (resolve) => {
+                            let levels = ["info", "warning", "error"] as const;
+
                             resolve(
                                 await Promise.all(
-                                    ["info", "warning", "error"].map(
-                                        level =>
-                                            new Promise(async resolve => {
-                                                logger.on(level, event => {
-                                                    console.log(
-                                                        `-${event.id}-${level}-`
-                                                    );
-                                                    resolve(event);
+                                    levels.map(
+                                        (level) =>
+                                            new Promise(async (_resolve) => {
+                                                logger.on(level, (event) => {
+                                                    _resolve(event);
                                                 });
                                             })
                                     )
@@ -108,5 +107,16 @@ describe("immutable loggers", () => {
             loggerB.warning("warning");
             loggerC.error(<any>{ isAxiosError: true });
         });
+    });
+});
+
+describe("no colours settings", () => {
+    let _logger = createLogger({ colours: false, id: "[no colours]" });
+
+    it("does not display colours", () => {
+        _logger.debug("debug no colours");
+        _logger.info("info no colours");
+        _logger.warning("warning no colours");
+        _logger.error(new Error("error no colours"));
     });
 });

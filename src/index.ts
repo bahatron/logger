@@ -24,13 +24,8 @@ export const red = (text: string) => `\x1b[31m${text}\x1b[0m`;
 
 const isAxiosError = (err: any): err is AxiosError => Boolean(err.isAxiosError);
 
-function defaultFormatter({ timestamp, message, level, id }: LogContext) {
-    let _timestamp = moment(timestamp).format("YYYY-MM-DD HH:mm:ss.SSS");
-    return `${_timestamp} ${id} ${level} | ${message}`;
-}
-
 function emit(event: string, payload: LogContext) {
-    (_handlers[event] || []).forEach(handler => handler(payload));
+    (_handlers[event] || []).forEach((handler) => handler(payload));
 }
 
 const _handlers: Record<string, Handler[]> = {};
@@ -39,7 +34,7 @@ export type Logger = ReturnType<typeof createLogger>;
 export function createLogger({
     debug = true,
     id = "",
-    formatter = defaultFormatter,
+    formatter,
     colours = true,
 }: {
     debug?: boolean;
@@ -47,6 +42,13 @@ export function createLogger({
     formatter?: Formatter;
     colours?: boolean;
 } = {}) {
+    function defaultFormatter({ timestamp, message, level, id }: LogContext) {
+        let _timestamp = moment(timestamp).format("YYYY-MM-DD HH:mm:ss.SSS");
+        return `${_timestamp} ${id} ${level.padEnd(
+            colours ? 16 : 7
+        )} | ${message}`;
+    }
+
     function log(level: string, message: string, context?: any) {
         let payload = {
             id,
@@ -56,26 +58,9 @@ export function createLogger({
             level,
         };
 
-        console.log(formatter(payload));
+        console.log(formatter?.(payload) ?? defaultFormatter(payload));
 
         return payload;
-    }
-
-    function inspect(context?: any) {
-        if (!context) {
-            return;
-        }
-
-        let type = `type: ${typeof context}`;
-        console.log(colours ? red(type) : type);
-
-        if (typeof context === "object" || Array.isArray(context)) {
-            Object.entries(context).forEach(([key, value]) => {
-                console.log(`${colours ? cyan(key) : key}: `, value);
-            });
-        } else {
-            console.log(context.toString());
-        }
     }
 
     return {
@@ -95,7 +80,7 @@ export function createLogger({
             });
         },
 
-        on(event: string, handler: Handler) {
+        on(event: "debug" | "info" | "warning" | "error", handler: Handler) {
             if (!_handlers[event]) {
                 _handlers[event] = [];
             }
@@ -107,11 +92,26 @@ export function createLogger({
             _handlers[event].push(handler);
         },
 
-        inspect,
+        inspect(context?: any) {
+            if (!context) {
+                return;
+            }
+
+            let type = `type: ${typeof context}`;
+            console.log(colours ? red(type) : type);
+
+            if (typeof context === "object" || Array.isArray(context)) {
+                Object.entries(context).forEach(([key, value]) => {
+                    console.log(`${colours ? cyan(key) : key}: `, value);
+                });
+            } else {
+                console.log(context.toString());
+            }
+        },
 
         debug(message: string, context?: any): void {
             if (debug) {
-                let level = "DEBUG".padEnd(7);
+                let level = "DEBUG";
 
                 let logContext = log(
                     colours ? cyan(level) : level,
@@ -121,12 +121,12 @@ export function createLogger({
 
                 emit("debug", logContext);
 
-                inspect(context);
+                this.inspect(context);
             }
         },
 
         info(message: string, context?: any) {
-            let level = "INFO".padEnd(7);
+            let level = "INFO";
             let logContext = log(
                 colours ? green(level) : level,
                 message,
@@ -137,7 +137,7 @@ export function createLogger({
         },
 
         warning(message: string, context?: any) {
-            let level = "WARNING".padEnd(7);
+            let level = "WARNING";
             let logContext = log(
                 colours ? orange(level) : level,
                 message,
@@ -148,7 +148,7 @@ export function createLogger({
         },
 
         error(err: Error | AxiosError) {
-            let level = "ERROR".padEnd(7);
+            let level = "ERROR";
             let context = isAxiosError(err)
                 ? {
                       req_config: {
@@ -159,7 +159,6 @@ export function createLogger({
                       },
                       res_status: err.response?.status,
                       res_data: err.response?.data,
-                      stack: err.stack,
                   }
                 : {
                       ...err,
