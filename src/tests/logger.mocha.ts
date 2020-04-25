@@ -40,21 +40,6 @@ describe("logger", () => {
         });
     });
 
-    it("can set formatter", () => {
-        const logger = createLogger({
-            debug: true,
-            formatter: (params) => {
-                return JSON.stringify(params, null, 4);
-            },
-        });
-
-        logger.info("what's going on?");
-
-        logger
-            .formatter((params) => "all of your bases are belong to me")
-            .info("changing the formatter!");
-    });
-
     it("can set logger id", () => {
         const logger = createLogger({
             debug: false,

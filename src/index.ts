@@ -72,14 +72,6 @@ export function createLogger({
             });
         },
 
-        formatter(_formatter: Formatter) {
-            return createLogger({
-                debug,
-                id,
-                formatter: _formatter,
-            });
-        },
-
         on(event: "debug" | "info" | "warning" | "error", handler: Handler) {
             if (!_handlers[event]) {
                 _handlers[event] = [];
@@ -93,19 +85,19 @@ export function createLogger({
         },
 
         inspect(context?: any) {
+            let type = `type: ${typeof context}`;
+            console.log(colours ? red(type) : type);
+
             if (!context) {
                 return;
             }
-
-            let type = `type: ${typeof context}`;
-            console.log(colours ? red(type) : type);
 
             if (typeof context === "object" || Array.isArray(context)) {
                 Object.entries(context).forEach(([key, value]) => {
                     console.log(`${colours ? cyan(key) : key}: `, value);
                 });
             } else {
-                console.log(context.toString());
+                console.log(context);
             }
         },
 
@@ -120,8 +112,6 @@ export function createLogger({
                 );
 
                 emit("debug", logContext);
-
-                this.inspect(context);
             }
         },
 

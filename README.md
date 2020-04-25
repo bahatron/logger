@@ -15,5 +15,5 @@ myLogger.on("error", context => {
     // do your thing
 });
 
-myLogger.warning("warning", {foo: "bar"});
+myLogger.error("warning", {foo: "bar"});
 ```
