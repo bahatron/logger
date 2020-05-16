@@ -1,5 +1,6 @@
 import { createLogger } from "..";
 import { expect } from "chai";
+import { axiosError } from "./axios_error";
 
 describe("logger", () => {
     const _logger = createLogger();
@@ -36,7 +37,7 @@ describe("logger", () => {
             _logger.on("error", () => {
                 resolve();
             });
-            _logger.error(new Error("error"));
+            _logger.error("error", axiosError);
         });
     });
 
@@ -58,7 +59,10 @@ describe("logger", () => {
 });
 
 describe("immutable loggers", () => {
-    const _logger = createLogger({ debug: false, id: "immb21" });
+    const _logger = createLogger({
+        debug: false,
+        id: "immb21",
+    });
 
     it("calls all event handlers attached from any event", async () => {
         return new Promise(async (resolve) => {
@@ -90,7 +94,7 @@ describe("immutable loggers", () => {
 
             loggerA.info("info");
             loggerB.warning("warning");
-            loggerC.error(<any>{ isAxiosError: true });
+            loggerC.error("error", new Error("123"));
         });
     });
 });
@@ -102,6 +106,24 @@ describe("no colours settings", () => {
         _logger.debug("debug no colours");
         _logger.info("info no colours");
         _logger.warning("warning no colours");
-        _logger.error(new Error("error no colours"));
+        _logger.error("error", new Error("error no colours"));
+    });
+});
+
+describe("error logging", () => {
+    let logger = createLogger({ colours: false, formatter: JSON.stringify });
+    it("formats axios error", () => {
+        logger.error("axios error test", axiosError);
+    });
+
+    it("formats normal errors", () => {
+        logger.error("Error instance", new TypeError("an error"));
+    });
+
+    it("formats generic context", () => {
+        logger.error("generic", {
+            morty: { rick: "sanchez" },
+            req_id: "c-137",
+        });
     });
 });
