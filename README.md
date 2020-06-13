@@ -1,19 +1,16 @@
-
 # Logger
 
 ```ts
-import {createLogger} from "@bahatron/logger"
+import { createLogger } from "@bahatron/logger";
 
 let myLogger = createLogger({
     debug: false,
     id: "my logger id",
 });
 
-myLogger.on("error", context => {
-    // webhook to slack
-    // webhook to sentry/bugsnag
+myLogger.on("warning", (context) => {
     // do your thing
 });
 
-myLogger.error("warning", {foo: "bar"});
+myLogger.warning("warning", { foo: "bar" });
 ```
