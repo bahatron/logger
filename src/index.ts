@@ -17,7 +17,17 @@ export interface Formatter {
     (payload: LogEntry): string;
 }
 
-export type Logger = ReturnType<typeof createLogger>;
+export type EventType = "debug" | "info" | "warning" | "error";
+
+interface Logger {
+    id(string: string): Logger;
+    on(string: EventType, handler: Handler): void;
+    inspect(payload?: any): void;
+    debug(message: string, context?: any): Promise<void>;
+    info(message: string, context?: any): Promise<void>;
+    warning(message: string, context?: any): Promise<void>;
+    error(message: string, err?: any): Promise<void>;
+}
 
 export const green = (text: string) => `\x1b[32m${text}\x1b[0m`;
 export const cyan = (text: string) => `\x1b[96m${text}\x1b[0m`;
@@ -27,35 +37,13 @@ export const red = (text: string) => `\x1b[31m${text}\x1b[0m`;
 const isAxiosError = (err: any): err is AxiosError =>
     Boolean(err?.isAxiosError);
 
-function buildErrorContext(err: any) {
-    if (isAxiosError(err)) {
-        return {
-            req_config: {
-                url: err.config?.url,
-                method: err.config?.method,
-                headers: err.config?.headers,
-                data: err.config?.data,
-            },
-            res_status: err.response?.status,
-            res_data: err.response?.data,
-        };
-    } else if (err instanceof Error) {
-        return {
-            ...err,
-            stack: err.stack,
-        };
-    }
-
-    return err;
-}
+const _HANDLERS: Record<string, Handler[]> = {};
 
 async function emit(event: string, payload: LogEntry) {
     await Promise.all(
-        (_handlers[event] || []).map((handler) => handler(payload))
+        (_HANDLERS[event] || []).map((handler) => handler(payload))
     );
 }
-
-const _handlers: Record<string, Handler[]> = {};
 
 export function createLogger({
     debug = true,
@@ -67,7 +55,7 @@ export function createLogger({
     id?: string;
     formatter?: Formatter;
     colours?: boolean;
-} = {}) {
+} = {}): Logger {
     function defaultFormatter({ timestamp, message, level, id }: LogEntry) {
         let _timestamp = moment(timestamp).format("YYYY-MM-DD HH:mm:ss.SSS");
         return `${_timestamp} ${level.padEnd(
@@ -92,22 +80,23 @@ export function createLogger({
     return {
         id(_id: string) {
             return createLogger({
-                debug,
                 id: _id,
+                debug,
+                colours,
                 formatter,
             });
         },
 
-        on(event: "debug" | "info" | "warning" | "error", handler: Handler) {
-            if (!_handlers[event]) {
-                _handlers[event] = [];
+        on(event: EventType, handler: Handler) {
+            if (!_HANDLERS[event]) {
+                _HANDLERS[event] = [];
             }
 
-            if (_handlers[event].includes(handler)) {
+            if (_HANDLERS[event].includes(handler)) {
                 return;
             }
 
-            _handlers[event].push(handler);
+            _HANDLERS[event].push(handler);
         },
 
         inspect(payload?: any) {
@@ -127,7 +116,7 @@ export function createLogger({
             }
         },
 
-        debug(message: string, context?: any) {
+        async debug(message: string, context?: any): Promise<void> {
             if (!debug) {
                 return;
             }
@@ -139,21 +128,21 @@ export function createLogger({
             return emit("debug", entry);
         },
 
-        info(message: string, context?: any): Promise<void> {
+        async info(message: string, context?: any): Promise<void> {
             let level = "INFO";
             let entry = log(colours ? green(level) : level, message, context);
 
             return emit("info", entry);
         },
 
-        warning(message: string, context?: any): Promise<void> {
+        async warning(message: string, context?: any): Promise<void> {
             let level = "WARNING";
             let entry = log(colours ? orange(level) : level, message, context);
 
             return emit("warning", entry);
         },
 
-        error(message: string, err?: any): Promise<void> {
+        async error(message: string, err?: any): Promise<void> {
             let level = "ERROR";
 
             let entry = log(
@@ -165,6 +154,28 @@ export function createLogger({
             return emit("error", entry);
         },
     };
+}
+
+function buildErrorContext(err: any) {
+    if (isAxiosError(err)) {
+        return {
+            req_config: {
+                url: err.config?.url,
+                method: err.config?.method,
+                headers: err.config?.headers,
+                data: err.config?.data,
+            },
+            res_status: err.response?.status,
+            res_data: err.response?.data,
+        };
+    } else if (err instanceof Error) {
+        return {
+            ...err,
+            stack: err.stack,
+        };
+    }
+
+    return err;
 }
 
 export default createLogger();
