@@ -27,11 +27,11 @@ export const red = (text: string) => `\x1b[31m${text}\x1b[0m`;
 const isAxiosError = (err: any): err is AxiosError =>
     Boolean(err?.isAxiosError);
 
-const _HANDLERS: Record<string, Handler[]> = {};
+const HANDLERS: Record<string, Handler[]> = {};
 
 async function emit(event: string, payload: LogEntry) {
     await Promise.all(
-        (_HANDLERS[event] || []).map((handler) => handler(payload))
+        (HANDLERS[event] || []).map((handler) => handler(payload))
     );
 }
 
@@ -56,10 +56,10 @@ export function createLogger({
 
     function log(level: string, message: string, context?: any): LogEntry {
         let payload = {
-            id,
             timestamp: moment().toISOString(),
-            context,
+            id,
             message,
+            context,
             level,
         };
 
@@ -79,15 +79,15 @@ export function createLogger({
         },
 
         on(event: EventType, handler: Handler) {
-            if (!_HANDLERS[event]) {
-                _HANDLERS[event] = [];
+            if (!HANDLERS[event]) {
+                HANDLERS[event] = [];
             }
 
-            if (_HANDLERS[event].includes(handler)) {
+            if (HANDLERS[event].includes(handler)) {
                 return;
             }
 
-            _HANDLERS[event].push(handler);
+            HANDLERS[event].push(handler);
         },
 
         inspect(payload?: any) {
@@ -116,8 +116,10 @@ export function createLogger({
 
             let entry = log(
                 colours ? cyan(level) : level,
-                message ?? "",
-                payload
+                message ?? ["string", "number"].includes(typeof payload)
+                    ? payload
+                    : "",
+                buildErrorContext(payload)
             );
 
             return emit("debug", entry);
