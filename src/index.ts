@@ -19,16 +19,6 @@ export interface Formatter {
 
 export type EventType = "debug" | "info" | "warning" | "error";
 
-interface Logger {
-    id(string: string): Logger;
-    on(string: EventType, handler: Handler): void;
-    inspect(payload?: any): void;
-    debug(message: string, context?: any): Promise<void>;
-    info(message: string, context?: any): Promise<void>;
-    warning(message: string, context?: any): Promise<void>;
-    error(message: string, err?: any): Promise<void>;
-}
-
 export const green = (text: string) => `\x1b[32m${text}\x1b[0m`;
 export const cyan = (text: string) => `\x1b[96m${text}\x1b[0m`;
 export const orange = (text: string) => `\x1b[33m${text}\x1b[0m`;
@@ -45,6 +35,7 @@ async function emit(event: string, payload: LogEntry) {
     );
 }
 
+export type Logger = ReturnType<typeof createLogger>;
 export function createLogger({
     debug = true,
     id = "",
@@ -55,7 +46,7 @@ export function createLogger({
     id?: string;
     formatter?: Formatter;
     colours?: boolean;
-} = {}): Logger {
+} = {}) {
     function defaultFormatter({ timestamp, message, level, id }: LogEntry) {
         let _timestamp = moment(timestamp).format("YYYY-MM-DD HH:mm:ss.SSS");
         return `${_timestamp} ${level.padEnd(
@@ -116,14 +107,18 @@ export function createLogger({
             }
         },
 
-        async debug(message: string, context?: any): Promise<void> {
+        async debug(payload: any, message?: string): Promise<void> {
             if (!debug) {
                 return;
             }
 
             let level = "DEBUG";
 
-            let entry = log(colours ? cyan(level) : level, message, context);
+            let entry = log(
+                colours ? cyan(level) : level,
+                message ?? "",
+                payload
+            );
 
             return emit("debug", entry);
         },
@@ -142,12 +137,12 @@ export function createLogger({
             return emit("warning", entry);
         },
 
-        async error(message: string, err?: any): Promise<void> {
+        async error(err: any, message?: string): Promise<void> {
             let level = "ERROR";
 
             let entry = log(
                 colours ? red(level) : level,
-                message,
+                message ?? err.message ?? "",
                 buildErrorContext(err)
             );
 

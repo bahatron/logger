@@ -37,7 +37,7 @@ describe("logger", () => {
             _logger.on("error", () => {
                 resolve();
             });
-            _logger.error("error", axiosError);
+            _logger.error(axiosError, "error");
         });
     });
 
@@ -94,7 +94,7 @@ describe("immutable loggers", () => {
 
             loggerA.info("info");
             loggerB.warning("warning");
-            loggerC.error("error", new Error("123"));
+            loggerC.error(new Error("123"), "error");
         });
     });
 });
@@ -106,24 +106,27 @@ describe("no colours settings", () => {
         _logger.debug("debug no colours");
         _logger.info("info no colours");
         _logger.warning("warning no colours");
-        _logger.error("error", new Error("error no colours"));
+        _logger.error(new Error("error no colours"), "error");
     });
 });
 
 describe("error logging", () => {
     let logger = createLogger({ colours: false, formatter: JSON.stringify });
     it("formats axios error", () => {
-        logger.error("axios error test", axiosError);
+        logger.error(axiosError, "axios error test");
     });
 
     it("formats normal errors", () => {
-        logger.error("Error instance", new TypeError("an error"));
+        logger.error(new TypeError("an error"), "Error instance");
     });
 
     it("formats generic context", () => {
-        logger.error("generic", {
-            morty: { rick: "sanchez" },
-            req_id: "c-137",
-        });
+        logger.error(
+            {
+                morty: { rick: "sanchez" },
+                req_id: "c-137",
+            },
+            "generic"
+        );
     });
 });
