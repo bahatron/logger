@@ -10,7 +10,7 @@ describe("logger", () => {
             _logger.on("debug", () => {
                 resolve();
             });
-            _logger.debug("debug");
+            _logger.debug("debug", { foo: "bar" });
         });
     });
 
@@ -19,7 +19,7 @@ describe("logger", () => {
             _logger.on("info", () => {
                 resolve();
             });
-            _logger.info("info");
+            _logger.info("info", { foo: "bar" });
         });
     });
 
@@ -28,7 +28,7 @@ describe("logger", () => {
             _logger.on("warning", () => {
                 resolve();
             });
-            _logger.warning("warning");
+            _logger.warning("warning", { foo: "bar" });
         });
     });
 

@@ -24,6 +24,31 @@ export const cyan = (text: string) => `\x1b[96m${text}\x1b[0m`;
 export const orange = (text: string) => `\x1b[33m${text}\x1b[0m`;
 export const red = (text: string) => `\x1b[31m${text}\x1b[0m`;
 
+const ERROR_LEVEL = {
+    DEBUG: "DEBUG",
+    INFO: "INFO",
+    WARNING: "WARNING",
+    ERROR: "ERROR",
+} as const;
+
+// enum ERROR_LEVEL_ENUM {
+//     DEBUG = "DEBUG",
+//     INFO = "INFO",
+//     WARNING = "WARNING",
+//     ERROR = "ERROR",
+// }
+
+function stringify(payload: any): any {
+    if (
+        ["object", "function"].includes(typeof payload) ||
+        Array.isArray(payload)
+    ) {
+        return JSON.stringify(payload, null, 4);
+    }
+
+    return payload;
+}
+
 const isAxiosError = (err: any): err is AxiosError =>
     Boolean(err?.isAxiosError);
 
@@ -47,11 +72,17 @@ export function createLogger({
     formatter?: Formatter;
     colours?: boolean;
 } = {}) {
-    function defaultFormatter({ timestamp, message, level, id }: LogEntry) {
+    function defaultFormatter({
+        timestamp,
+        message,
+        level,
+        id,
+        context,
+    }: LogEntry) {
         let _timestamp = moment(timestamp).format("YYYY-MM-DD HH:mm:ss.SSS");
         return `${_timestamp} ${level.padEnd(
             colours ? 16 : 7
-        )} ${id} | ${message}`;
+        )} ${id} | ${message}${context ? `\n${stringify(context)}` : ""}`;
     }
 
     function log(level: string, message: string, context?: any): LogEntry {
@@ -107,40 +138,40 @@ export function createLogger({
             }
         },
 
-        async debug(payload: any, message?: string): Promise<void> {
+        async debug(message: string, context?: any): Promise<void> {
             if (!debug) {
                 return;
             }
 
-            let level = "DEBUG";
+            let level = ERROR_LEVEL.DEBUG;
 
             let entry = log(
                 colours ? cyan(level) : level,
-                message ?? ["string", "number"].includes(typeof payload)
-                    ? payload
-                    : "",
-                buildErrorContext(payload)
+                message,
+                buildErrorContext(context)
             );
 
             return emit("debug", entry);
         },
 
         async info(message: string, context?: any): Promise<void> {
-            let level = "INFO";
+            let level = ERROR_LEVEL.INFO;
+
             let entry = log(colours ? green(level) : level, message, context);
 
             return emit("info", entry);
         },
 
         async warning(message: string, context?: any): Promise<void> {
-            let level = "WARNING";
+            let level = ERROR_LEVEL.WARNING;
+
             let entry = log(colours ? orange(level) : level, message, context);
 
             return emit("warning", entry);
         },
 
         async error(err: any, message?: string): Promise<void> {
-            let level = "ERROR";
+            let level = ERROR_LEVEL.ERROR;
 
             let entry = log(
                 colours ? red(level) : level,
