@@ -90,7 +90,7 @@ describe("immutable loggers", () => {
                             );
                         })
                 )
-            ).then(resolve);
+            ).then(<any>resolve);
 
             loggerA.info("info");
             loggerB.warning("warning");

@@ -195,11 +195,12 @@ function buildErrorContext(err: any) {
             },
             res_status: err.response?.status,
             res_data: err.response?.data,
+            stack: new Error().stack,
         };
     } else if (err instanceof Error) {
         return {
             ...err,
-            stack: err.stack,
+            stack: new Error().stack,
         };
     }
 
