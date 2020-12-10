@@ -31,13 +31,6 @@ const ERROR_LEVEL = {
     ERROR: "ERROR",
 } as const;
 
-// enum ERROR_LEVEL_ENUM {
-//     DEBUG = "DEBUG",
-//     INFO = "INFO",
-//     WARNING = "WARNING",
-//     ERROR = "ERROR",
-// }
-
 function stringify(payload: any): any {
     if (
         ["object", "function"].includes(typeof payload) ||
@@ -49,18 +42,27 @@ function stringify(payload: any): any {
     return payload;
 }
 
-const isAxiosError = (err: any): err is AxiosError =>
-    Boolean(err?.isAxiosError);
+function isAxiosError(err: any): err is AxiosError {
+    return Boolean(err?.isAxiosError);
+}
 
 const HANDLERS: Record<string, Handler[]> = {};
-
 async function emit(event: string, payload: LogEntry) {
     await Promise.all(
         (HANDLERS[event] || []).map((handler) => handler(payload))
     );
 }
 
-export type Logger = ReturnType<typeof createLogger>;
+export interface Logger {
+    id(id: string): Logger;
+    on(event: EventType, handler: Handler): void;
+    inspect(payload?: any): void;
+    debug(message: string, context?: any): Promise<void>;
+    info(message: string, context?: any): Promise<void>;
+    warning(message: string, context?: any): Promise<void>;
+    error(error: any, message?: string): Promise<void>;
+}
+
 export function createLogger({
     debug = true,
     id = "",
@@ -71,7 +73,7 @@ export function createLogger({
     id?: string;
     formatter?: Formatter;
     colours?: boolean;
-} = {}) {
+} = {}): Logger {
     function defaultFormatter({
         timestamp,
         message,
@@ -109,7 +111,7 @@ export function createLogger({
             });
         },
 
-        on(event: EventType, handler: Handler) {
+        on(event, handler) {
             if (!HANDLERS[event]) {
                 HANDLERS[event] = [];
             }
@@ -121,14 +123,7 @@ export function createLogger({
             HANDLERS[event].push(handler);
         },
 
-        inspect(payload?: any) {
-            let type = `type: ${typeof payload}`;
-            console.log(colours ? red(type) : type);
-
-            if (!payload) {
-                return;
-            }
-
+        inspect(payload) {
             if (typeof payload === "object" || Array.isArray(payload)) {
                 Object.entries(payload).forEach(([key, value]) => {
                     console.log(`${colours ? cyan(key) : key}: `, value);
@@ -138,7 +133,7 @@ export function createLogger({
             }
         },
 
-        async debug(message: string, context?: any): Promise<void> {
+        async debug(message, context) {
             if (!debug) {
                 return;
             }
@@ -154,7 +149,7 @@ export function createLogger({
             return emit("debug", entry);
         },
 
-        async info(message: string, context?: any): Promise<void> {
+        async info(message, context) {
             let level = ERROR_LEVEL.INFO;
 
             let entry = log(colours ? green(level) : level, message, context);
@@ -162,7 +157,7 @@ export function createLogger({
             return emit("info", entry);
         },
 
-        async warning(message: string, context?: any): Promise<void> {
+        async warning(message, context) {
             let level = ERROR_LEVEL.WARNING;
 
             let entry = log(colours ? orange(level) : level, message, context);
@@ -170,7 +165,7 @@ export function createLogger({
             return emit("warning", entry);
         },
 
-        async error(err: any, message?: string): Promise<void> {
+        async error(err, message) {
             let level = ERROR_LEVEL.ERROR;
 
             let entry = log(
@@ -191,20 +186,19 @@ function buildErrorContext(err: any) {
                 url: err.config?.url,
                 method: err.config?.method,
                 headers: err.config?.headers,
+                params: err.config?.params,
                 data: err.config?.data,
             },
             res_status: err.response?.status,
             res_data: err.response?.data,
             stack: new Error().stack,
         };
-    } else if (err instanceof Error) {
-        return {
-            ...err,
-            stack: new Error().stack,
-        };
     }
 
-    return err;
+    return {
+        ...err,
+        stack: new Error().stack,
+    };
 }
 
 export default createLogger();
