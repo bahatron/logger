@@ -6,6 +6,7 @@
     "main": "dist/index.js",
     "types": "dist/index.d.ts",
     "scripts": {
+        "preversion": "npm run build && npm run test",
         "dev": "tsc --watch",
         "build": "rm -rf dist && tsc",
         "test": "mocha 'dist/**/*.mocha.js'"
