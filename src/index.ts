@@ -191,14 +191,15 @@ function buildErrorContext(err: any) {
             },
             res_status: err.response?.status,
             res_data: err.response?.data,
+        };
+    } else if (err instanceof Error) {
+        return {
+            ...err,
             stack: new Error().stack,
         };
     }
 
-    return {
-        ...err,
-        stack: new Error().stack,
-    };
+    return err;
 }
 
 export default createLogger();
