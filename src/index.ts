@@ -195,7 +195,6 @@ function buildErrorContext(err: any) {
     } else if (err instanceof Error) {
         return {
             ...err,
-            stack: new Error().stack,
         };
     }
 
